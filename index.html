@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Jadwal Digital SMK Esemkita</title>
+  <style>
+    /* ========== BASE ========== */
+    * { box-sizing: border-box; font-family: "Poppins", sans-serif; transition: all .22s ease; }
+    html,body { height:100%; margin:0; background: url('Background.jpg') no-repeat center center/cover; background-size:cover; display:flex; align-items:center; justify-content:center; padding:20px; color:#222; }
+
+    /* container */
+    .container { width:100%; max-width:980px; background: rgba(255,255,255,0.98); border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.18); overflow:hidden; display:flex; flex-direction:column; max-height:92vh; }
+    header { background: linear-gradient(180deg,#0076d9,#0062b3); color:#fff; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+    header h1 { margin:0; font-size:1.25rem; }
+    header .controls { display:flex; gap:8px; align-items:center; }
+
+    /* pages */
+    .page { display:none; padding:18px; overflow:auto; flex:1 1 auto; transform: translateY(12px); opacity:0; transition: transform .35s ease, opacity .35s ease; background:transparent; }
+    .page.active { display:block; transform: translateY(0); opacity:1; }
+
+    /* alert in-box */
+    .alert-bar { display:none; margin-top:10px; padding:10px 14px; border-radius:10px; color:white; text-align:center; font-weight:700;
+      background: linear-gradient(90deg,#005bb5 0%, #1e88e5 50%, #77b9f6 100%); box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+      transform: translateY(-6px); opacity:0; transition: transform .32s ease, opacity .32s ease; }
+    .alert-bar.show { display:block; transform: translateY(0); opacity:1; }
+
+    /* login */
+    .login-box { width:380px; max-width:calc(100% - 32px); margin:40px auto; background:#fff; padding:20px; border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.12); text-align:center; }
+    .login-box img { width:84px; display:block; margin:0 auto 8px; }
+    .login-box h2 { margin:6px 0 12px; color:#0076d9; }
+    .login-box input { width:100%; padding:10px; margin:8px 0; border:1px solid #e0e0e0; border-radius:8px; }
+    .login-box button { width:100%; padding:10px; background:#0076d9; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+    .login-box .error { color:#c0392b; display:none; margin-top:8px; }
+
+    /* kelas */
+    .kelas-container { display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; align-items:center; }
+    .kelas { background: linear-gradient(135deg,#0076d9,#00a8ff); color:white; padding:10px 14px; border-radius:12px; cursor:pointer; font-weight:700; min-width:120px; text-align:center; box-shadow:0 6px 18px rgba(0,0,0,0.12); }
+    .kelas:hover { transform: translateY(-6px); box-shadow:0 14px 28px rgba(0,0,0,0.14); }
+
+    /* jadwal grid */
+    #jadwalGrid { margin-top:12px; }
+    .jadwal-grid { display:grid; grid-template-columns: repeat(13, minmax(80px,1fr)); gap:6px; min-width:820px; padding:6px; }
+    .jadwal-grid > div { background:white; border:1px solid #eee; padding:8px; border-radius:6px; font-size:12px; text-align:center; }
+    .jadwal-header { background:#0076d9; color:white; font-weight:800; }
+
+    /* slide-in for jadwal */
+    .slide-in { animation: slideIn .36s ease both; }
+    @keyframes slideIn { from { transform: translateY(10px); opacity:0; } to { transform: translateY(0); opacity:1; } }
+
+    /* in-box nav */
+    .inbox-nav { display:none; margin-top:14px; border-top:1px dashed rgba(0,0,0,0.06); padding-top:12px; display:flex; gap:10px; justify-content:center; align-items:center; }
+    .inbox-nav button { background:transparent; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; font-weight:700; color:#444; }
+    .inbox-nav button.active { background:rgba(0,0,0,0.06); color:#0076d9; }
+
+    /* back button */
+    .back-btn { background:#0076d9; color:white; border:none; padding:8px 12px; border-radius:8px; cursor:pointer; margin-bottom:12px; }
+    .back-btn:hover { background:#005a9a; }
+
+    /* edit modal area */
+    .editor { background:#fff; padding:12px; border-radius:10px; border:1px solid #e6e6e6; margin-top:12px; }
+    .editor textarea { width:100%; min-height:120px; }
+
+    /* small helpers */
+    .center { text-align:center; } .muted { color:#666; font-size:0.95rem; }
+    .top-row { display:flex; gap:8px; align-items:center; justify-content:flex-end; }
+
+    /* print */
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left:0; top:0; width:100%; }
+    }
+
+    /* dark theme */
+    .dark body, .dark .container { background: #111; color:#eee; }
+    .dark .box, .dark .login-box, .dark .jadwal-grid > div { background:#1b1b1b; color:#ddd; border-color:#2b2b2b; }
+    .dark header { background: linear-gradient(180deg,#093b66,#062d4e); }
+    .dark .kelas { box-shadow:none; }
+
+    /* responsive */
+    @media (max-width:920px) { .jadwal-grid { min-width:700px; grid-template-columns:repeat(13,minmax(60px,1fr)); } .kelas { min-width:95px; } .container{max-width:720px;} }
+    @media (max-width:480px) { .login-box{width:92%; margin:28px auto;} .container{padding:0;} .jadwal-grid{min-width:640px; grid-template-columns:repeat(13,minmax(50px,1fr));} }
+  </style>
+</head>
+<body id="bodyRoot">
+  <div class="container" role="application" aria-label="Aplikasi Jadwal">
+    <header>
+      <h1>Jadwal Digital SMK Esemkita</h1>
+      <div class="controls">
+        <div id="smallProfile" class="muted" style="font-size:.95rem;">&nbsp;</div>
+        <button id="themeToggle" title="Toggle Tema" style="background:transparent;border:none;color:#fff;cursor:pointer;font-weight:700;">Tema</button>
+      </div>
+    </header>
+
+    <!-- LOGIN -->
+    <section id="loginPage" class="page active" aria-label="login">
+      <div class="login-box" role="region" aria-label="Login Box">
+        <img src="LOgo Esemkita.jpg" alt="logo" style="width:84px;">
+        <h2>Masuk</h2>
+        <input id="username" type="email" placeholder="Email (contoh: siswa@belajar.id)" autocomplete="username">
+        <input id="password" type="password" placeholder="Kata sandi" autocomplete="current-password">
+        <div id="error" class="error">Email atau kata sandi salah!</div>
+        <button id="btnLogin" onclick="login()">Masuk</button>
+        <p class="muted" style="margin-top:10px;font-size:.9rem;">Masuk menggunakan akun sekolah (belajar.id)</p>
+      </div>
+    </section>
+
+    <!-- BERANDA -->
+    <section id="berandaPage" class="page" aria-label="beranda">
+      <div class="box" role="main" aria-label="Beranda Box" style="position:relative;">
+        <!-- alert inside box -->
+        <div id="alertBar" class="alert-bar" role="status" aria-live="polite">Selamat Datang di Jadwal Digital Esemkita</div>
+
+        <main>
+          <h2 style="margin:6px 0 8px 0;">Pilih Kelas</h2>
+
+          <!-- RPL -->
+          <h3 style="margin:8px 0 6px 0;">💻 Rekayasa Perangkat Lunak</h3>
+          <div class="kelas-container" id="rplList">
+            <div class="kelas" onclick="lihatJadwal('X RPL 1')">X RPL 1</div>
+            <div class="kelas" onclick="lihatJadwal('X RPL 2')">X RPL 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI RPL 1')">XI RPL 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI RPL 2')">XI RPL 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII RPL 1')">XII RPL 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII RPL 2')">XII RPL 2</div>
+          </div>
+
+          <!-- DKV -->
+          <h3 style="margin:12px 0 6px 0;">🎨 Desain Komunikasi Visual</h3>
+          <div class="kelas-container" id="dkvList">
+            <div class="kelas" onclick="lihatJadwal('X DKV 1')">X DKV 1</div>
+            <div class="kelas" onclick="lihatJadwal('X DKV 2')">X DKV 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI DKV 1')">XI DKV 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI DKV 2')">XI DKV 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII DKV 1')">XII DKV 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII DKV 2')">XII DKV 2</div>
+          </div>
+
+          <!-- TKJ -->
+          <h3 style="margin:12px 0 6px 0;">🌐 Teknik Komputer dan Jaringan</h3>
+          <div class="kelas-container" id="tkjList">
+            <div class="kelas" onclick="lihatJadwal('X TKJ 1')">X TKJ 1</div>
+            <div class="kelas" onclick="lihatJadwal('X TKJ 2')">X TKJ 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI TKJ 1')">XI TKJ 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI TKJ 2')">XI TKJ 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII TKJ 1')">XII TKJ 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII TKJ 2')">XII TKJ 2</div>
+          </div>
+
+          <!-- ANIMASI -->
+          <h3 style="margin:12px 0 6px 0;">🎭 Animasi</h3>
+          <div class="kelas-container" id="anmList">
+            <div class="kelas" onclick="lihatJadwal('X ANM 1')">X ANM 1</div>
+            <div class="kelas" onclick="lihatJadwal('X ANM 2')">X ANM 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI ANM 1')">XI ANM 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI ANM 2')">XI ANM 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII ANM 1')">XII ANM 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII ANM 2')">XII ANM 2</div>
+          </div>
+
+          <!-- AKUNTANSI -->
+          <h3 style="margin:12px 0 6px 0;">💼 Akuntansi dan Keuangan Lembaga</h3>
+          <div class="kelas-container" id="akList">
+            <div class="kelas" onclick="lihatJadwal('X Ak 1')">X Ak 1</div>
+            <div class="kelas" onclick="lihatJadwal('X Ak 2')">X Ak 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI Ak 1')">XI Ak 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI Ak 2')">XI Ak 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII Ak 1')">XII Ak 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII Ak 2')">XII Ak 2</div>
+          </div>
+
+          <!-- MANAJEMEN PERKANTORAN -->
+          <h3 style="margin:12px 0 6px 0;">🗂️ Manajemen Perkantoran</h3>
+          <div class="kelas-container" id="mpList">
+            <div class="kelas" onclick="lihatJadwal('X MP 1')">X MP 1</div>
+            <div class="kelas" onclick="lihatJadwal('X MP 2')">X MP 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI MP 1')">XI MP 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI MP 2')">XI MP 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII MP 1')">XII MP 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII MP 2')">XII MP 2</div>
+          </div>
+
+          <!-- BROADCASTING -->
+          <h3 style="margin:12px 0 6px 0;">📺 Broadcasting</h3>
+          <div class="kelas-container" id="bcList">
+            <div class="kelas" onclick="lihatJadwal('X BC 1')">X BC 1</div>
+            <div class="kelas" onclick="lihatJadwal('X BC 2')">X BC 2</div>
+            <div class="kelas" onclick="lihatJadwal('XI BC 1')">XI BC 1</div>
+            <div class="kelas" onclick="lihatJadwal('XI BC 2')">XI BC 2</div>
+            <div class="kelas" onclick="lihatJadwal('XII BC 1')">XII BC 1</div>
+            <div class="kelas" onclick="lihatJadwal('XII BC 2')">XII BC 2</div>
+          </div>
+
+          <div id="lastChoice" class="center muted" style="margin-top:12px; display:none;">
+            Pilihan terakhir: <span id="lastChoiceText"></span>
+            <button id="btnSeeLast" style="margin-left:8px;padding:6px 10px;border-radius:8px;border:none;background:#0076d9;color:#fff;cursor:pointer;" onclick="lihatLastChoice()">Lihat</button>
+          </div>
+
+        </main>
+
+        <!-- in-box nav -->
+        <div class="inbox-nav" id="inboxNav">
+          <button id="navBeranda" onclick="goPage('berandaPage')">Beranda</button>
+          <button id="navNotif" onclick="goPage('notifPage')">Notifikasi</button>
+          <button id="navProfil" onclick="goPage('profilPage')">Profil</button>
+          <button id="navLogout" onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- JADWAL -->
+    <section id="jadwalPage" class="page" aria-label="jadwal">
+      <div class="box">
+        <div id="alertBarJ" class="alert-bar">Selamat Datang di Jadwal Digital Esemkita</div>
+
+        <main>
+          <button class="back-btn" onclick="goPage('berandaPage')">← Kembali</button>
+          <div class="top-row" style="justify-content:space-between;margin-bottom:8px;">
+            <h2 id="judulKelas">Jadwal Kelas</h2>
+            <div style="display:flex;gap:8px;">
+              <button id="btnPrint" onclick="printJadwal()" style="padding:8px;border-radius:8px;border:none;background:#0076d9;color:#fff;cursor:pointer;">Cetak</button>
+              <button id="btnEdit" onclick="openEditor()" style="padding:8px;border-radius:8px;border:none;background:#00a8ff;color:#fff;cursor:pointer;display:none;">Edit</button>
+            </div>
+          </div>
+          <div id="jadwalGrid"></div>
+
+          <!-- Editor area (admin only) -->
+          <div id="editorArea" class="editor" style="display:none;">
+            <p style="margin:0 0 8px 0;font-weight:700;">Editor Jadwal (simpan per kelas)</p>
+            <div style="overflow:auto;">
+              <table id="editorTable" style="border-collapse:collapse;width:100%;min-width:700px;">
+                <!-- generated by JS -->
+              </table>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button onclick="saveEdits()" style="padding:8px;border-radius:8px;border:none;background:#0076d9;color:#fff;cursor:pointer;">Simpan</button>
+              <button onclick="cancelEdit()" style="padding:8px;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer;">Batal</button>
+              <button onclick="resetToDefault()" style="padding:8px;border-radius:8px;border:none;background:#e74c3c;color:#fff;cursor:pointer;">Reset ke Default (RPL)</button>
+            </div>
+          </div>
+
+        </main>
+
+        <div class="inbox-nav" id="inboxNavJadwal">
+          <button onclick="goPage('berandaPage')">Beranda</button>
+          <button onclick="goPage('notifPage')">Notifikasi</button>
+          <button onclick="goPage('profilPage')">Profil</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROFIL -->
+    <section id="profilPage" class="page" aria-label="profil">
+      <div class="box">
+        <div id="alertBarP" class="alert-bar">Selamat Datang di Jadwal Digital Esemkita</div>
+
+        <main class="profil">
+          <img id="profileImg" src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" alt="foto" style="width:120px;border-radius:50%;border:4px solid #0076d9;">
+          <h2 id="namaProfil">Nama Pengguna</h2>
+          <p><b>Email:</b> <span id="emailProfil"></span></p>
+
+          <!-- Admin controls -->
+          <div id="adminControls" style="margin-top:12px;display:none;">
+            <p style="margin:0 0 8px 0;font-weight:700;">Mode Admin</p>
+            <button onclick="goPage('jadwalPage')" style="padding:8px;border-radius:8px;border:none;background:#00a8ff;color:#fff;cursor:pointer;">Kelola Jadwal</button>
+            <button onclick="exportAllSchedules()" style="padding:8px;border-radius:8px;border:none;background:#2ecc71;color:#fff;cursor:pointer;margin-left:8px;">Export Jadwal (JSON)</button>
+            <button onclick="importSchedulesPrompt()" style="padding:8px;border-radius:8px;border:none;background:#f39c12;color:#fff;cursor:pointer;margin-left:8px;">Import Jadwal</button>
+          </div>
+        </main>
+
+        <div class="inbox-nav" id="inboxNavProfil">
+          <button onclick="goPage('berandaPage')">Beranda</button>
+          <button onclick="goPage('notifPage')">Notifikasi</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTIFIKASI -->
+    <section id="notifPage" class="page" aria-label="notifikasi">
+      <div class="box">
+        <header style="background:transparent;padding:0;margin-bottom:6px;"></header>
+        <main>
+          <h2>Notifikasi</h2>
+          <p style="text-align:center;color:#555;margin-top:12px;">Tidak ada notifikasi</p>
+        </main>
+        <div class="inbox-nav" id="inboxNavNotif">
+          <button onclick="goPage('berandaPage')">Beranda</button>
+          <button onclick="goPage('profilPage')">Profil</button>
+          <button onclick="logout()">Logout</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    /* ====== Default jadwal for X RPL 1 ====== */
+    const defaultXrpl1 = [
+      ["Hari","Jam 1","Jam 2","Jam 3","Jam 4","Jam 5","Jam 6","Jam 7","Jam 8","Jam 9","Jam 10","Jam 11","Jam 12"],
+      ["Senin","Upacara","PJOK","PJOK","PJOK","Informatika","Informatika","B. Inggris","B. Inggris","B. Indonesia","B. Indonesia","-","-"],
+      ["Selasa","Seni Budaya","Seni Budaya","Sejarah","Sejarah","Dasar PPLG","Dasar PPLG","Dasar PPLG","Dasar PPLG","P. Pancasila","P. Pancasila","-","-"],
+      ["Rabu","Proyek IPAS","Proyek IPAS","Proyek IPAS","B. Jawa","B. Jawa","Informatika","Informatika","PAI","PAI","PAI","-","-"],
+      ["Kamis","B. Inggris","B. Inggris","Dasar PPLG","Dasar PPLG","Dasar PPLG","Dasar PPLG","Matematika","Matematika","Kecerdasan Artifisial","Kecerdasan Artifisial","-","-"],
+      ["Jumat","Pembiasaan","Matematika","Matematika","Dasar PPLG","Dasar PPLG","Dasar PPLG","Dasar PPLG","B. Indonesia","B. Indonesia","Proyek IPAS","Proyek IPAS","Proyek IPAS"]
+    ];
+
+    /* ====== Utility: storage keys ====== */
+    function scheduleKeyFor(kelas){ return 'schedule__' + kelas.replace(/\s+/g,'_'); }
+    function saveScheduleToStorage(kelas, arr){ localStorage.setItem(scheduleKeyFor(kelas), JSON.stringify(arr)); }
+    function loadScheduleFromStorage(kelas){
+      const v = localStorage.getItem(scheduleKeyFor(kelas));
+      if(!v) return null;
+      try { return JSON.parse(v); } catch(e){ return null; }
+    }
+
+    /* ====== Page / Nav helpers ====== */
+    function goPage(id){
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      const el = document.getElementById(id);
+      if(el) el.classList.add('active');
+
+      // update small profile in header
+      const user = localStorage.getItem('user');
+      document.getElementById('smallProfile').textContent = user ? (user.includes('admin') ? 'Admin Esemkita' : 'Siswa Esemkita') : '';
+
+      // highlight nav buttons if visible
+      setActiveNavForAll(id);
+    }
+
+    function setActiveNavForAll(pageId){
+      document.querySelectorAll('.inbox-nav').forEach(nav => {
+        nav.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+        // find the button with matching onclick target
+        nav.querySelectorAll('button').forEach(btn => {
+          const onclick = btn.getAttribute('onclick') || '';
+          if(onclick.includes(pageId)) btn.classList.add('active');
+        });
+      });
+    }
+
+    /* ====== Theme toggle (dark/light) ====== */
+    const bodyRoot = document.getElementById('bodyRoot');
+    function applyTheme(theme){
+      if(theme === 'dark') bodyRoot.classList.add('dark'); else bodyRoot.classList.remove('dark');
+      localStorage.setItem('theme', theme);
+    }
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const cur = localStorage.getItem('theme') || 'light';
+      const next = cur === 'light' ? 'dark' : 'light';
+      applyTheme(next);
+    });
+    // apply saved theme at start
+    (function(){ const t = localStorage.getItem('theme') || 'light'; applyTheme(t); })();
+
+    /* ====== Login (manual) ====== */
+    function login(){
+      const u = document.getElementById('username').value.trim();
+      const p = document.getElementById('password').value.trim();
+      const err = document.getElementById('error');
+      err.style.display = 'none';
+      const allowed = ['adminesemkita@belajar.id','siswaesemkita@belajar.id'];
+      if(!allowed.includes(u) || p !== 'esemkitabisa'){ err.style.display = 'block'; return; }
+      // store user for session (not auto-login)
+      localStorage.setItem('user', u);
+      document.getElementById('namaProfil').textContent = u.includes('admin') ? 'Admin Esemkita' : 'Siswa Esemkita';
+      document.getElementById('emailProfil').textContent = u;
+      // show navs inside box
+      showInBoxNav(true);
+      // show alert + sound
+      showAlertInBox('Beranda');
+      // show last choice if any
+      const last = localStorage.getItem('lastClass');
+      if(last){ document.getElementById('lastChoiceText').textContent = last; document.getElementById('lastChoice').style.display = 'block'; }
+      else document.getElementById('lastChoice').style.display = 'none';
+      // if admin, show admin controls
+      const isAdmin = u.includes('admin');
+      document.getElementById('adminControls').style.display = isAdmin ? 'block' : 'none';
+      document.getElementById('btnEdit').style.display = isAdmin ? 'inline-block' : 'none';
+      // go to beranda
+      goPage('berandaPage');
+    }
+
+    function logout(){
+      localStorage.removeItem('user');
+      showInBoxNav(false);
+      document.getElementById('namaProfil').textContent = 'Nama Pengguna';
+      document.getElementById('emailProfil').textContent = '';
+      document.getElementById('btnEdit').style.display = 'none';
+      document.getElementById('adminControls').style.display = 'none';
+      goPage('loginPage');
+    }
+
+    function showInBoxNav(show){
+      document.querySelectorAll('.inbox-nav').forEach(n => n.style.display = show ? 'flex' : 'none');
+    }
+
+    /* ====== Alert in-box with sound ====== */
+    function playChime(){
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = 'sine';
+        o.frequency.setValueAtTime(450, ctx.currentTime);
+        o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.12);
+        g.gain.setValueAtTime(0, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        o.connect(g); g.connect(ctx.destination);
+        o.start();
+        o.stop(ctx.currentTime + 0.55);
+      } catch(e){}
+    }
+    function showAlertInBox(target){
+      let elem = document.getElementById('alertBar');
+      if(target==='Jadwal') elem = document.getElementById('alertBarJ');
+      if(target==='Profil') elem = document.getElementById('alertBarP');
+      if(!elem) return;
+      elem.classList.add('show'); playChime();
+      setTimeout(()=> elem.classList.remove('show'),2500);
+    }
+
+    /* ====== Jadwal display, print, edit ====== */
+    function lihatJadwal(kelas){
+      localStorage.setItem('lastClass', kelas);
+      localStorage.setItem('kelas', kelas);
+      tampilkanJadwal(true);
+      goPage('jadwalPage');
+    }
+
+    function tampilkanJadwal(withAnimation=false){
+      const kelas = localStorage.getItem('kelas') || '';
+      const grid = document.getElementById('jadwalGrid');
+      const judul = document.getElementById('judulKelas');
+      judul.textContent = 'Jadwal Kelas ' + kelas;
+      grid.innerHTML = '';
+
+      // load schedule: prefer saved, otherwise use default only for X RPL 1
+      let schedule = loadScheduleFromStorage(kelas);
+      if(!schedule){
+        if(kelas === 'X RPL 1') schedule = defaultXrpl1;
+      }
+
+      if(schedule){
+        const wrapper = document.createElement('div');
+        wrapper.className = 'jadwal-grid';
+        schedule.forEach((row,i)=>{
+          row.forEach((cell,j)=>{
+            const d = document.createElement('div');
+            d.textContent = cell;
+            if(i===0 || j===0) d.classList.add('jadwal-header');
+            wrapper.appendChild(d);
+          });
+        });
+        if(withAnimation) wrapper.classList.add('slide-in');
+        grid.appendChild(wrapper);
+      } else {
+        const p = document.createElement('p');
+        p.textContent = 'Jadwal belum dimasukkan';
+        p.style.textAlign = 'center'; p.style.color = '#555'; p.style.fontSize = '1.05rem'; p.style.marginTop = '18px';
+        if(withAnimation) p.classList.add('slide-in');
+        grid.appendChild(p);
+      }
+
+      // show edit button if user is admin
+      const user = localStorage.getItem('user') || '';
+      document.getElementById('btnEdit').style.display = user.includes('admin') ? 'inline-block' : 'none';
+      document.getElementById('editorArea').style.display = 'none';
+    }
+
+    function printJadwal(){
+      // create a print wrapper
+      let kelas = localStorage.getItem('kelas') || '';
+      if(!kelas){
+        alert('Pilih kelas terlebih dahulu.');
+        return;
+      }
+      // prepare printable area
+      const snap = document.getElementById('jadwalGrid').innerHTML;
+      const title = document.getElementById('judulKelas').textContent;
+      const printArea = document.createElement('div');
+      printArea.id = 'printArea';
+      printArea.innerHTML = `<div style="padding:18px;"><h2 style="text-align:center;">${title}</h2>${snap}</div>`;
+      document.body.appendChild(printArea);
+      window.print();
+      document.body.removeChild(printArea);
+    }
+
+    /* ====== Editor (admin) ====== */
+    function openEditor(){
+      const kelas = localStorage.getItem('kelas') || '';
+      if(!kelas){ alert('Pilih kelas terlebih dahulu.'); return; }
+      // load schedule or create empty 6x13 template
+      let schedule = loadScheduleFromStorage(kelas);
+      if(!schedule){
+        if(kelas === 'X RPL 1') schedule = JSON.parse(JSON.stringify(defaultXrpl1));
+        else {
+          // create a template with first column header + 12 jams
+          schedule = [];
+          const header = ["Hari"];
+          for(let i=1;i<=12;i++) header.push("Jam " + i);
+          schedule.push(header);
+          const days = ["Senin","Selasa","Rabu","Kamis","Jumat"];
+          days.forEach(d => {
+            const row = [d];
+            for(let i=1;i<=12;i++) row.push("");
+            schedule.push(row);
+          });
+        }
+      }
+      buildEditorTable(schedule);
+      document.getElementById('editorArea').style.display = 'block';
+      // show editor only to admin (button visibility handled elsewhere)
+    }
+
+    function buildEditorTable(schedule){
+      const table = document.getElementById('editorTable');
+      table.innerHTML = '';
+      schedule.forEach((row, i) => {
+        const tr = document.createElement('tr');
+        row.forEach((cell, j) => {
+          const td = document.createElement('td');
+          td.style.border = '1px solid #e6e6e6';
+          td.style.padding = '6px';
+          td.style.minWidth = j===0 ? '120px' : '90px';
+          const input = document.createElement('input');
+          input.value = cell;
+          input.style.width = '100%';
+          input.dataset.r = i;
+          input.dataset.c = j;
+          td.appendChild(input);
+          tr.appendChild(td);
+        });
+        table.appendChild(tr);
+      });
+    }
+
+    function saveEdits(){
+      const inputs = document.querySelectorAll('#editorTable input');
+      // determine rows and cols by max indices
+      let rows = [], maxR = 0, maxC = 0;
+      inputs.forEach(inp => {
+        const r = parseInt(inp.dataset.r,10), c = parseInt(inp.dataset.c,10);
+        if(r>maxR) maxR = r; if(c>maxC) maxC = c;
+      });
+      for(let i=0;i<=maxR;i++){ rows[i]=[]; for(let j=0;j<=maxC;j++) rows[i][j]=''; }
+      inputs.forEach(inp => { rows[parseInt(inp.dataset.r,10)][parseInt(inp.dataset.c,10)] = inp.value; });
+      const kelas = localStorage.getItem('kelas') || '';
+      if(!kelas) return alert('Kelas tidak diketahui.');
+      saveScheduleToStorage(kelas, rows);
+      // refresh view
+      tampilkanJadwal(false);
+      document.getElementById('editorArea').style.display = 'none';
+      alert('Jadwal disimpan.');
+    }
+
+    function cancelEdit(){ document.getElementById('editorArea').style.display = 'none'; }
+
+    function resetToDefault(){
+      const kelas = localStorage.getItem('kelas') || '';
+      if(kelas !== 'X RPL 1'){ if(!confirm('Reset hanya tersedia untuk X RPL 1 default. Tetap reset?')) return; }
+      saveScheduleToStorage('X RPL 1', defaultXrpl1);
+      if(kelas === 'X RPL 1') tampilkanJadwal(false);
+      alert('Jadwal X RPL 1 direset ke default.');
+    }
+
+    /* Export / Import schedules (admin) */
+    function exportAllSchedules(){
+      const data = {};
+      for(let i=0;i<localStorage.length;i++){
+        const k = localStorage.key(i);
+        if(k.startsWith('schedule__')) data[k] = JSON.parse(localStorage.getItem(k));
+      }
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'schedules.json'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importSchedulesPrompt(){
+      const text = prompt('Tempel JSON schedules yang diekspor sebelumnya di sini:');
+      if(!text) return;
+      try{
+        const obj = JSON.parse(text);
+        Object.keys(obj).forEach(k => localStorage.setItem(k, JSON.stringify(obj[k])));
+        alert('Import berhasil.');
+      } catch(e){ alert('Format JSON tidak valid.'); }
+    }
+
+    /* ====== Storage helpers (defined earlier) ====== */
+    function scheduleKeyFor(kelas){ return 'schedule__' + kelas.replace(/\s+/g,'_'); }
+    function saveScheduleToStorage(kelas, arr){ localStorage.setItem(scheduleKeyFor(kelas), JSON.stringify(arr)); }
+    function loadScheduleFromStorage(kelas){
+      const v = localStorage.getItem(scheduleKeyFor(kelas));
+      if(!v) return null;
+      try { return JSON.parse(v); } catch(e){ return null; }
+    }
+
+    /* ===== lastChoice handling ===== */
+    function lihatLastChoice(){
+      const last = localStorage.getItem('lastClass');
+      if(!last) return alert('Tidak ada pilihan terakhir.');
+      localStorage.setItem('kelas', last);
+      tampilkanJadwal(true);
+      goPage('jadwalPage');
+    }
+
+    /* ===== Init ===== */
+    document.addEventListener('DOMContentLoaded', () => {
+      // start on login
+      goPage('loginPage'); showInBoxNav(false);
+      // set small profile if present
+      const user = localStorage.getItem('user'); if(user) document.getElementById('smallProfile').textContent = user.includes('admin') ? 'Admin Esemkita' : 'Siswa Esemkita';
+      // last choice text prepared
+      const last = localStorage.getItem('lastClass');
+      if(last){ document.getElementById('lastChoiceText').textContent = last; } else { document.getElementById('lastChoice').style.display = 'none'; }
+      // apply theme saved
+      const theme = localStorage.getItem('theme') || 'light'; if(theme === 'dark') bodyRoot.classList.add('dark'); else bodyRoot.classList.remove('dark');
+      // prepare initial jadwal placeholder
+      document.getElementById('jadwalGrid').innerHTML = "<p style='text-align:center;color:#777'>Pilih kelas dari Beranda untuk melihat jadwal.</p>";
+      // keyboard enter to login
+      document.getElementById('password').addEventListener('keyup', function(e){ if(e.key === 'Enter') login(); });
+    });
+
+    /* ===== Accessibility & safety notes done ===== */
+
+  </script>
+</body>
+</html>
